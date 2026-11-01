@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Install pinned official AMap SDK archives from https://lbs.amap.com/api/ios-sdk/download.
 Usage: python3 Scripts/install-amap.py /path/to/downloaded/archives
+       python3 Scripts/install-amap.py --download
 """
 from pathlib import Path
 import hashlib, plistlib, shutil, sys, tempfile, zipfile
+import urllib.request
 ROOT=Path(__file__).resolve().parents[1]
 ARCHIVES={
  'AMap_iOS_3DMap_Lib_V11.3.100.zip':'231fedcd79532932864a9b39717164cb6a3267bf53dc5d755bf9894ebba04af7',
@@ -15,7 +17,21 @@ ARCHIVES={
 }
 def main():
  if len(sys.argv)!=2: raise SystemExit(__doc__)
- source=Path(sys.argv[1]);destination=ROOT/'Vendor/AMap'
+ if sys.argv[1]=='--download':
+  with tempfile.TemporaryDirectory(prefix='chuannong-amap-download-') as tmp:
+   source=Path(tmp)
+   for name,digest in ARCHIVES.items():
+    url='https://a.amap.com/lbs/static/zip/'+name
+    with urllib.request.urlopen(url,timeout=120) as response:
+     data=response.read()
+    if hashlib.sha256(data).hexdigest()!=digest:raise SystemExit('SDK checksum mismatch: '+name)
+    (source/name).write_bytes(data)
+   install(source)
+ else:
+  install(Path(sys.argv[1]))
+
+def install(source):
+ destination=ROOT/'Vendor/AMap'
  for name,digest in ARCHIVES.items():
   if hashlib.sha256((source/name).read_bytes()).hexdigest()!=digest:raise SystemExit('SDK checksum mismatch: '+name)
  with tempfile.TemporaryDirectory(prefix='chuannong-amap-') as tmp:
