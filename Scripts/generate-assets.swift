@@ -1,4 +1,4 @@
-// Package the own Android artwork at Apple's required icon dimensions.
+// Package the approved original brand artwork at Apple's required icon dimensions.
 // Run from the iOS directory: swift Scripts/generate-assets.swift
 import AppKit
 import ImageIO

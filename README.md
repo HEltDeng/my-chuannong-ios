@@ -33,7 +33,7 @@ xcodebuild -project my-chuannong-ios/MyChuannong.xcodeproj \
   -derivedDataPath .work/ios-build CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- build
 ```
 
-从 iOS 目录执行 `swift Scripts/generate-assets.swift` 可从自有原图重新生成标准 AppIcon。高德官方 SDK 放在被忽略的 `Vendor/AMap`。首次设置可用 `python3 Scripts/install-amap.py /本机官方SDK压缩包目录` 校验并安装固定版本，再运行 `update-project.py`。地图 11.3.100 / Foundation NO-IDFA 1.9.4 / Search 9.8.1 无 arm64 模拟器切片，地图须在真机验收。
+从 iOS 目录执行 `swift Scripts/generate-original-brand-icon.swift` 可重建已确认的原创绿叶原图与应用内透明标识，再执行 `swift Scripts/generate-assets.swift` 生成标准 AppIcon。高德官方 SDK 放在被忽略的 `Vendor/AMap`。首次设置可用 `python3 Scripts/install-amap.py /本机官方SDK压缩包目录` 校验并安装固定版本，再运行 `update-project.py`。地图 11.3.100 / Foundation NO-IDFA 1.9.4 / Search 9.8.1 无 arm64 模拟器切片，地图须在真机验收。
 
 复制 `Config/Local.xcconfig.example` 为 `Config/Local.xcconfig` 填本机签名、App Group 与独立高德 iOS Key；不要将其加入 Git。iOS Key 绑定实际 Bundle ID，不能复用 Android Key。
 

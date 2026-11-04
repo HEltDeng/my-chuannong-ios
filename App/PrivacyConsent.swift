@@ -1,5 +1,4 @@
 import SwiftUI
-import Darwin
 
 /// Bump this key whenever the scope of processing changes; old consent is not reused.
 enum PrivacyConsent {
@@ -11,35 +10,32 @@ enum PrivacyConsent {
         UserDefaults.standard.set(Date.now.timeIntervalSince1970 * 1000, forKey: "privacy.acceptedAt.v5")
         UserDefaults.standard.set(true, forKey: storageKey)
     }
-    static func declineAndExit() {
+    static func decline() {
         UserDefaults.standard.set(false, forKey: storageKey)
         UserDefaults.standard.removeObject(forKey: "privacy.acceptedAt.v5")
-        // Explicit product request for the local review build. iOS has no graceful
-        // application-exit API; revisit this behavior before App Store submission.
-        UserDefaults.standard.synchronize()
-        Darwin.exit(EXIT_SUCCESS)
     }
 }
 
 struct WelcomeView: View {
     @State private var document: LegalDocumentKind?
+    @State private var declined = false
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .body) private var bodySize = 15.0
     @ScaledMetric(relativeTo: .headline) private var titleSize = 18.0
     @ScaledMetric(relativeTo: .headline) private var buttonSize = 16.0
     var accept: () -> Void = { PrivacyConsent.accept() }
-    var decline: () -> Void = { PrivacyConsent.declineAndExit() }
+    var decline: () -> Void = { PrivacyConsent.decline() }
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 Color(uiColor: .systemBackground).ignoresSafeArea()
                 VStack(spacing: 18) {
                     Spacer()
-                    Image(systemName: "leaf.fill").font(.system(size: 76)).foregroundStyle(ChuannongTheme.green)
+                    Image("BrandMark").resizable().scaledToFit().frame(width: 76, height: 76)
                     Text("欢迎使用我的川农").font(.title2.bold())
                     Spacer()
                     HStack(spacing: 10) {
-                        Image(systemName: "leaf.fill").font(.title)
+                        Image("BrandMark").resizable().scaledToFit().frame(width: 28, height: 28)
                         Text("我的川农").font(.system(size: 24, weight: .bold)).lineLimit(1)
                     }.foregroundStyle(ChuannongTheme.green).padding(.bottom, 32)
                 }.accessibilityHidden(true)
@@ -69,7 +65,7 @@ struct WelcomeView: View {
                             .frame(maxWidth: .infinity, minHeight: 44)
                             .background(ChuannongTheme.green, in: Capsule())
                             .accessibilityIdentifier("welcome-agree")
-                        Button("不同意", action: decline)
+                        Button("不同意") { decline(); declined = true }
                             .font(.system(size: bodySize)).foregroundStyle(Color.primary.opacity(0.68))
                             .frame(maxWidth: .infinity, minHeight: 44)
                             .accessibilityIdentifier("welcome-disagree")
@@ -91,6 +87,11 @@ struct WelcomeView: View {
             NavigationStack {
                 LegalView(kind: kind).toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { document = nil } } }
             }.tint(ChuannongTheme.green)
+        }
+        .alert("尚未同意", isPresented: $declined) {
+            Button("返回协议", role: .cancel) { }
+        } message: {
+            Text("未同意时无法进入应用，你可以关闭应用或返回阅读。")
         }
     }
 }

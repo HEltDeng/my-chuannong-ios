@@ -25,7 +25,7 @@ struct PlatformLoginView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 22) {
-                Image(systemName:"leaf.fill").font(.system(size:54)).foregroundStyle(ChuannongTheme.green)
+                Image("BrandMark").resizable().scaledToFit()
                     .frame(width:64,height:64).accessibilityLabel("我的川农")
                 Text(mode.title).font(.system(size:24,weight:.bold)).multilineTextAlignment(.center)
                 VStack(spacing:16) {

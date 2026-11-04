@@ -14,7 +14,7 @@ struct PrivacyReviewPreview: View {
             if accepted {
                 NavigationStack { ServicesView(store: .preview(), isPreview: true) }
             } else {
-                WelcomeView(accept: { accepted = true })
+                WelcomeView(accept: { accepted = true }, decline: { })
             }
         }.environment(platform).environment(school).environment(configuration).tint(ChuannongTheme.green)
     }

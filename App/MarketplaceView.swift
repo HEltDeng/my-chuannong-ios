@@ -48,7 +48,7 @@ struct MarketplaceView:View {
                 HStack{Text(mine ? "全部提交" : mode=="sell" ? "好物推荐" : "同学的心愿清单");Spacer();Text("\(items.count) 条信息")}.font(.system(size:12)).foregroundStyle(.secondary)
                 if store.loading && !store.loaded{ProgressView("正在加载…").frame(maxWidth:.infinity)}
                 if let error=store.error{StatusMessage(text:error)}
-                if store.loaded && items.isEmpty{VStack(spacing:14){Image(systemName:"leaf").font(.title);Text(mine ? "还没有发布信息" : "暂无相关信息");if mine{Button("去发布"){compose=true}.buttonStyle(.borderedProminent)}}.foregroundStyle(.secondary).frame(maxWidth:.infinity).padding(.vertical,48)}
+                if store.loaded && items.isEmpty{VStack(spacing:14){Image("BrandMark").resizable().scaledToFit().frame(width:28,height:28).accessibilityHidden(true);Text(mine ? "还没有发布信息" : "暂无相关信息");if mine{Button("去发布"){compose=true}.buttonStyle(.borderedProminent)}}.foregroundStyle(.secondary).frame(maxWidth:.infinity).padding(.vertical,48)}
                 if mine {ForEach(items){item in mineCard(item)}}
                 else if mode=="sell" {
                     LazyVGrid(columns:Array(repeating:GridItem(.flexible(),spacing:12),count:size.isAccessibilitySize ? 1 : 2),spacing:12){ForEach(items){item in NavigationLink{CommunityDetail(kind:.secondhand,id:item.id,changed:{revision+=1})}label:{marketCard(item)}.buttonStyle(.plain)}}
