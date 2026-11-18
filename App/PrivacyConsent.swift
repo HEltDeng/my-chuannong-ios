@@ -2,24 +2,23 @@ import SwiftUI
 
 /// Bump this key whenever the scope of processing changes; old consent is not reused.
 enum PrivacyConsent {
-    static let storageKey = "privacy.ios.v5"
-    static let policyVersion = "2026-10-26.1"
-    static let receiptVersion = 7
-    static var acceptedAt: Int64 { Int64(UserDefaults.standard.double(forKey: "privacy.acceptedAt.v5")) }
+    static let storageKey = "privacy.ios.v10"
+    static let policyVersion = "2026-11-17.1"
+    static let receiptVersion = 10
+    static var acceptedAt: Int64 { Int64(UserDefaults.standard.double(forKey: "privacy.acceptedAt.v10")) }
     static func accept() {
-        UserDefaults.standard.set(Date.now.timeIntervalSince1970 * 1000, forKey: "privacy.acceptedAt.v5")
+        UserDefaults.standard.set(Date.now.timeIntervalSince1970 * 1000, forKey: "privacy.acceptedAt.v10")
         UserDefaults.standard.set(true, forKey: storageKey)
     }
     static func decline() {
         UserDefaults.standard.set(false, forKey: storageKey)
-        UserDefaults.standard.removeObject(forKey: "privacy.acceptedAt.v5")
+        UserDefaults.standard.removeObject(forKey: "privacy.acceptedAt.v10")
     }
 }
 
 struct WelcomeView: View {
     @State private var document: LegalDocumentKind?
     @State private var declined = false
-    @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .body) private var bodySize = 15.0
     @ScaledMetric(relativeTo: .headline) private var titleSize = 18.0
     @ScaledMetric(relativeTo: .headline) private var buttonSize = 16.0
@@ -44,21 +43,10 @@ struct WelcomeView: View {
                     Text("用户协议及隐私保护")
                         .font(.system(size: titleSize, weight: .bold)).multilineTextAlignment(.center)
                         .accessibilityAddTraits(.isHeader).padding(.horizontal, 20).padding(.top, 20).padding(.bottom, 18)
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("欢迎来到我的川农！\n我们重视您的个人信息与使用权益。请在使用前阅读[《隐私政策》](legal://privacy)、[《用户协议》](legal://agreement)、[《第三方服务与 SDK 清单》](legal://thirdparties)和[《个人信息收集清单》](legal://collection)。")
-                            ForEach(LegalContent.consentSummary, id: \.0) { title, text in
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(title).fontWeight(.semibold)
-                                    Text(text)
-                                }
-                            }
-                            Text("服务范围、使用规则和各功能说明已集中在上述协议及[《服务说明》](legal://services)中。点击“同意”，表示您已阅读并同意用户协议和隐私政策。")
-                        }.font(.system(size: bodySize)).foregroundStyle(Color.primary.opacity(0.68)).lineSpacing(3)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 20).padding(.bottom, 8)
-                    }.accessibilityIdentifier("welcome-agreement-scroll").scrollIndicators(.visible)
+                    ViewThatFits(in: .vertical) {
+                        documentLinks.fixedSize(horizontal: false, vertical: true)
+                        ScrollView { documentLinks }
+                    }
                     VStack(spacing: 4) {
                         Button("同意", action: accept)
                             .font(.system(size: buttonSize, weight: .medium)).foregroundStyle(.white)
@@ -71,18 +59,15 @@ struct WelcomeView: View {
                             .accessibilityIdentifier("welcome-disagree")
                     }.buttonStyle(.plain).padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 12)
                 }
-                .frame(maxWidth: 420).frame(height: max(260, geometry.size.height * (typeSize.isAccessibilitySize ? 0.86 : 0.70)))
+                .frame(maxWidth: 420)
+                .frame(maxHeight: geometry.size.height * 0.88)
+                .fixedSize(horizontal: false, vertical: true)
                 .background(Color(uiColor: .systemBackground), in: RoundedRectangle(cornerRadius: 24))
                 .padding(.horizontal, 38)
                 .accessibilityAddTraits(.isModal)
             }
         }
         .tint(ChuannongTheme.green)
-        .environment(\.openURL, OpenURLAction { url in
-            guard url.scheme == "legal", let kind = LegalDocumentKind(rawValue: url.host ?? "") else { return .systemAction }
-            document = kind
-            return .handled
-        })
         .sheet(item: $document) { kind in
             NavigationStack {
                 LegalView(kind: kind).toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { document = nil } } }
@@ -94,4 +79,27 @@ struct WelcomeView: View {
             Text("未同意时无法进入应用，你可以关闭应用或返回阅读。")
         }
     }
+    private var documentLinks: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("请阅读以下文件。点击“同意”后进入我的川农。")
+                .font(.system(size: bodySize))
+                .fixedSize(horizontal: false, vertical: true)
+            ForEach([LegalDocumentKind.agreement, .privacy]) { kind in
+                Button { document = kind } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "doc.text")
+                        Text(kind.title)
+                        Spacer()
+                        Image(systemName: "chevron.forward").accessibilityHidden(true)
+                    }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .font(.system(size: buttonSize))
+                .accessibilityIdentifier("welcome-document-" + kind.rawValue)
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+
 }

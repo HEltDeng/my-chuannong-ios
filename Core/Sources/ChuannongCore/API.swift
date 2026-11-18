@@ -115,7 +115,6 @@ public struct AuthUser: Codable, Sendable {
     public let accountStatus: String?
     public let accountStatusReason: String?
     public let userCode: String?
-    public let phoneVerified: Bool?
     public let studentId: String?
     public let realName: String?
     public let identityStatus: String?

@@ -68,7 +68,7 @@ public enum FeatureRoute: String, CaseIterable, Identifiable, Sendable {
     case schedule, grade, exam, document, cet, mandarin, ncre, comprehensive_score
     case electric, lost_found, errand, secondhand, weekly_attendance, holiday_destination, logistics_repair
     case driving_school, ielts_toefl, civil_postgrad, gym
-    case school_home, academic, student_affairs, auth, ywtb, payments, calendar, campus_map
+    case school_home, academic, student_affairs, auth, ywtb, payments, calendar
     public var id: String { rawValue }
     public var title: String { Self.catalog[self]!.0 }
     public var icon: String { Self.catalog[self]!.1 }
@@ -78,6 +78,6 @@ public enum FeatureRoute: String, CaseIterable, Identifiable, Sendable {
         .schedule:("课表","calendar","学习"), .grade:("成绩查询","chart.bar","学习"), .exam:("考试安排","list.bullet.clipboard","学习"), .cet:("四六级","abc","学习"), .document:("资料库","folder","学习"), .mandarin:("普通话测试","waveform","学习"), .ncre:("计算机考试","desktopcomputer","学习"), .comprehensive_score:("综测成绩","chart.bar.xaxis","学习"),
         .electric:("电费查询","bolt","生活"), .errand:("跑腿代取","shippingbox","生活"), .secondhand:("二手好物","bag","生活"), .lost_found:("失物招领","doc.text.magnifyingglass","生活"), .weekly_attendance:("周点名","person.badge.clock","生活"), .holiday_destination:("节假日去向","suitcase.rolling","生活"), .logistics_repair:("后勤报修","wrench.and.screwdriver","生活"),
         .driving_school:("驾校","car","校外园地"), .ielts_toefl:("雅思托福","character.book.closed","校外园地"), .civil_postgrad:("考公考研","books.vertical","校外园地"), .gym:("健身房","dumbbell","校外园地"),
-        .school_home:("学校官网","globe.asia.australia","学校服务"), .academic:("教务系统","graduationcap","学校服务"), .student_affairs:("学工系统","person.text.rectangle","学校服务"), .auth:("统一认证","lock.shield","学校服务"), .ywtb:("一网通办","square.grid.2x2","学校服务"), .payments:("校园缴费","creditcard","学校服务"), .calendar:("学校校历","calendar.badge.clock","学校服务"), .campus_map:("校园地图","map","学校服务")
+        .school_home:("学校官网","globe.asia.australia","学校服务"), .academic:("教务系统","graduationcap","学校服务"), .student_affairs:("学工系统","person.text.rectangle","学校服务"), .auth:("统一认证","lock.shield","学校服务"), .ywtb:("一网通办","square.grid.2x2","学校服务"), .payments:("校园缴费","creditcard","学校服务"), .calendar:("学校校历","calendar.badge.clock","学校服务")
     ]
 }

@@ -28,11 +28,32 @@ struct AvatarImage:View {
 }
 struct OfficialWebsiteView:View {
     var body:some View {
-        ScrollView{VStack(spacing:22){Image(systemName:"globe.asia.australia").font(.system(size:48)).foregroundStyle(ChuannongTheme.green);Text("官网筹备中").font(.title.bold());NavigationLink("隐私政策"){LegalView(kind:.privacy)};NavigationLink("用户协议"){LegalView(kind:.agreement)};NavigationLink("服务说明"){ServiceInformationView()};NavigationLink("联系与反馈"){PlatformGate{FeedbackView()}}}.frame(maxWidth:.infinity).padding(24)}.navigationTitle("我的川农官网")
+        SafariPage(url: URL(string: "https://mychuannong.cn/")!)
     }
 }
 struct PrivacySettingsView:View {
-    var body:some View{List{NavigationLink("关于我的川农"){AboutView()};NavigationLink("隐私政策"){LegalView(kind:.privacy)};NavigationLink("用户协议"){LegalView(kind:.agreement)};NavigationLink("服务说明"){ServiceInformationView()};NavigationLink("第三方 SDK / 服务清单"){PrivacyInventoryView(personal:false)};NavigationLink("个人信息清单"){PrivacyInventoryView(personal:true)}}.navigationTitle("隐私与合规")}
+    var body:some View{List{NavigationLink("关于我的川农"){AboutView()};NavigationLink("隐私政策"){LegalView(kind:.privacy)};NavigationLink("用户协议"){LegalView(kind:.agreement)};NavigationLink("服务说明"){ServiceInformationView()};NavigationLink("第三方 SDK / 服务清单"){PrivacyInventoryView(personal:false)};NavigationLink("个人信息清单"){PrivacyInventoryView(personal:true)};NavigationLink("已屏蔽用户"){PlatformGate{BlockedCommunityUsersView()}}}.navigationTitle("隐私与合规")}
+}
+struct BlockedCommunityUsersView: View {
+    @Environment(PlatformSession.self) private var platform
+    @AppStorage(CommunityBlocks.storageKey) private var blockedUsers = "{}"
+    private var users: [BlockedCommunityUser] { CommunityBlocks(json: blockedUsers).users(for: platform.user?.id) }
+    var body: some View {
+        List {
+            if users.isEmpty { ContentUnavailableView("暂无屏蔽用户", systemImage: "person.crop.circle") }
+            ForEach(users) { user in
+                HStack {
+                    Text(user.name)
+                    Spacer()
+                    Button("解除屏蔽") {
+                        var blocks = CommunityBlocks(json: blockedUsers)
+                        blocks.unblock(user.id, account: platform.user?.id)
+                        blockedUsers = blocks.json()
+                    }.buttonStyle(.bordered)
+                }
+            }
+        }.navigationTitle("已屏蔽用户")
+    }
 }
 struct PrivacyInventoryView:View {
     let personal:Bool

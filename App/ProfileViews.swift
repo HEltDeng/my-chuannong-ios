@@ -5,6 +5,7 @@ struct ProfileView: View {
     @Environment(PlatformSession.self) private var platform
     @Environment(SchoolSession.self) private var school
     @State private var avatar = AvatarStore()
+    @State private var website = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -19,7 +20,7 @@ struct ProfileView: View {
                         }
                     }.padding(.horizontal,16).padding(.vertical,24).frame(minHeight:156).background(ChuannongTheme.card,in:RoundedRectangle(cornerRadius:24)).overlay(RoundedRectangle(cornerRadius:24).stroke(.secondary.opacity(0.12),lineWidth:0.5))
                 }.buttonStyle(.plain)
-                NavigationLink { OfficialWebsiteView() } label: {
+                Button { website = true } label: {
                     HStack(spacing:14) {
                         Image(systemName:"globe.asia.australia").font(.system(size:28))
                         VStack(alignment:.leading,spacing:8) { Text("我的川农官网（最新消息）").font(.system(size:17,weight:.bold)) }
@@ -44,6 +45,7 @@ struct ProfileView: View {
         }.background(ChuannongTheme.background).toolbar(.hidden,for:.navigationBar)
         .task(id:platform.user?.id) { avatar.load(owner:platform.user?.id) }
         .onAppear { avatar.load(owner:platform.user?.id) }
+        .sheet(isPresented: $website) { OfficialWebsiteView() }
     }
     private func binding(_ name:String,_ value:String)->some View { HStack(spacing:8){Text(name).foregroundStyle(.secondary);Text(value)}.font(.system(size:12)) }
 }
@@ -80,11 +82,6 @@ struct AccountView: View {
                     binding("手机号",StudentPresentation.maskedPhone(platform.user?.phoneMasked));binding("学号",StudentPresentation.maskedStudent(school.identity?.studentID))
                     VStack(alignment:.leading,spacing:8){Text("昵称").font(.subheadline);TextField("昵称",text:$nickname).padding(14).overlay(RoundedRectangle(cornerRadius:12).stroke(.secondary.opacity(0.3)))}.onChange(of:nickname){_,value in nickname=String(value.prefix(30))}
                     Button{saving=true;Task{defer{saving=false};do{try await platform.nickname(nickname.trimmingCharacters(in:.whitespacesAndNewlines));error="昵称已更新"}catch{self.error=error.localizedDescription}}}label:{Text("保存昵称").frame(maxWidth:.infinity).padding(.vertical,7)}.buttonStyle(.borderedProminent).disabled(saving || nickname.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty || nickname.trimmingCharacters(in:.whitespacesAndNewlines)==platform.user?.nickname)
-                    HStack { Text("手机号验证");Spacer();Text(platform.user?.phoneVerified == true ? "已验证" : "待验证") }
-                    if platform.user?.phoneVerified != true {
-                        NavigationLink("验证绑定手机号") { PlatformLoginView(initialMode: .verify) }
-                    }
-                    NavigationLink("找回 / 重置密码") { PlatformLoginView(initialMode: .reset) }
                     NavigationLink("学生资料") { StudentIdentityView() }
                     if let reason=platform.user?.accountStatusReason,!reason.isEmpty{StatusMessage(text:reason)}
                     if let error{StatusMessage(text:error)}
@@ -138,16 +135,30 @@ struct DeleteAccountView: View {
 }
 
 struct AboutView: View {
+    @State private var website = false
+    private var appFilingNumber: String? {
+        guard let value = (Bundle.main.object(forInfoDictionaryKey: "AppFilingNumber") as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !value.isEmpty, !value.contains("$(") else { return nil }
+        return value
+    }
+
     var body:some View {
         ScrollView {
             VStack(alignment:.leading,spacing:18){
                 Text("我的川农").font(.system(size:28,weight:.black))
                 Text("面向四川农业大学同学的轻量校园生活工具，集中展示常用校园信息、课程服务与实用入口。").font(.system(size:16)).foregroundStyle(.secondary).lineSpacing(9)
                 VStack(alignment:.leading,spacing:4){Text("当前版本").font(.system(size:14)).foregroundStyle(.secondary);Text(Bundle.main.object(forInfoDictionaryKey:"CFBundleShortVersionString") as? String ?? "0.1.0").font(.system(size:20,weight:.bold))}.frame(maxWidth:.infinity,alignment:.leading).padding(18).background(ChuannongTheme.card,in:RoundedRectangle(cornerRadius:22))
-                NavigationLink{OfficialWebsiteView()}label:{Text("访问我的川农官网").frame(maxWidth:.infinity).padding(.vertical,8)}.buttonStyle(.borderedProminent)
+                Button{website = true}label:{Text("访问我的川农官网").frame(maxWidth:.infinity).padding(.vertical,8)}.buttonStyle(.borderedProminent)
                 Text("产品介绍、最新消息和详细说明请前往官网查看。").font(.system(size:14)).foregroundStyle(.secondary).lineSpacing(7)
                 NavigationLink("检查更新"){AppUpdateView()}.frame(maxWidth:.infinity)
+                if let appFilingNumber, let url = URL(string: "https://beian.miit.gov.cn/") {
+                    Link(appFilingNumber, destination: url)
+                        .font(.footnote)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }.padding(.horizontal,18).padding(.vertical,20)
         }.background(ChuannongTheme.background).navigationTitle("关于我的川农").navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $website) { OfficialWebsiteView() }
     }
 }

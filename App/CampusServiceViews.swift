@@ -1,5 +1,4 @@
 import SwiftUI
-import Photos
 
 struct GuideView: View {
     let route: FeatureRoute
@@ -7,7 +6,6 @@ struct GuideView: View {
     @State private var store = RemoteContent()
     @State private var web = false
     @State private var message: String?
-    @State private var saving = false
     private var repair: Bool { route == .logistics_repair }
     var body: some View {
         ScrollView {
@@ -48,37 +46,11 @@ struct GuideView: View {
         }.frame(maxWidth: .infinity, alignment: .leading).padding(16).background(ChuannongTheme.card, in: RoundedRectangle(cornerRadius: 16))
     }
     private var errand: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            if let url = Bundle.main.url(forResource: "errand_service_poster", withExtension: "jpg"), let image = UIImage(contentsOfFile: url.path) {
-                Image(uiImage: image).resizable().scaledToFit().clipShape(RoundedRectangle(cornerRadius: 24)).accessibilityLabel("哈哈龙跑腿宣传海报与小程序码")
-            }
-            HStack(spacing: 12) {
-                Button(saving ? "正在保存…" : "保存海报") { savePoster() }.buttonStyle(.borderedProminent).frame(maxWidth: .infinity).disabled(saving)
-                Button("打开微信") { openWeChat() }.buttonStyle(.bordered).frame(maxWidth: .infinity)
-            }
-        }
+        Text("即将上线").frame(maxWidth: .infinity).padding(.vertical, 80)
     }
     private func guideHeading(_ title: String) -> some View { HStack(spacing: 10) { RoundedRectangle(cornerRadius: 2).fill(ChuannongTheme.green).frame(width: 4, height: 20); Text(title).font(.system(size: 20, weight: .bold)) } }
     private func guideStep(_ number: String, _ title: String, _ detail: String) -> some View {
         HStack(alignment: .top, spacing: 14) { Text(number).font(.system(size: 23, weight: .bold)).foregroundStyle(ChuannongTheme.green).frame(width: 38, height: 38).background(ChuannongTheme.green.opacity(0.07), in: Circle()); VStack(alignment: .leading, spacing: 5) { Text(title).font(.system(size: 17, weight: .bold)); Text(detail).font(.system(size: 14)).lineSpacing(7).foregroundStyle(.secondary) }.frame(maxWidth: .infinity, alignment: .leading) }
-    }
-    private func openWeChat() {
-        guard let url = URL(string: "weixin://"), UIApplication.shared.canOpenURL(url) else { message = "当前未检测到微信，请先安装微信，或保存海报后使用其他设备扫码。"; return }
-        UIApplication.shared.open(url, options: [:]) { opened in Task { @MainActor in message = opened ? nil : "暂时无法打开微信，请重试。" } }
-    }
-    private func savePoster() {
-        guard !saving else { return }; saving = true
-        Task {
-            defer { saving = false }
-            do {
-                let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
-                guard status == .authorized || status == .limited else { message = "未获得相册保存权限，请在系统设置中允许添加照片后重试。"; return }
-                guard let url = Bundle.main.url(forResource: "errand_service_poster", withExtension: "jpg") else { throw APIError.invalidResponse }
-                // Preserve the original poster and its code, without re-encoding.
-                try await PHPhotoLibrary.shared().performChanges { PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL: url) }
-                message = "海报已保存到相册"
-            } catch { message = "保存失败，请重试。" }
-        }
     }
 }
 

@@ -24,9 +24,11 @@ struct MarketplaceView:View {
     @State private var deleting:CampusRecord?
     @State private var revision=0
     @State private var active=false
+    @AppStorage(CommunityBlocks.storageKey) private var blockedUsers="{}"
     private var items:[CampusRecord] {
         store.records.filter{item in
             if mine{return mineFilter=="all" || item["type"]==mineFilter}
+            if CommunityBlocks(json:blockedUsers).contains(item["ownerId"],account:platform.user?.id){return false}
             let text=[item.title,item["description"],item["category"],item["campus"]].joined(separator:" ")
             return item["type"]==mode && (campus=="全部校区" || item["campus"]==campus) && (category=="全部" || item["category"]==category) && (query.isEmpty || text.localizedCaseInsensitiveContains(query))
         }

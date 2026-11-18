@@ -15,16 +15,13 @@
 	</array>
 	<key>AppGroupIdentifier</key>
 	<string>$(APP_GROUP_IDENTIFIER)</string>
-	<key>AMapAPIKey</key>
-	<string>$(AMAP_IOS_API_KEY)</string>
+	<key>AppFilingNumber</key>
+	<string>$(APP_FILING_NUMBER)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
-		<string>weixin</string>
 		<string>mqqapi</string>
 	</array>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>仅在你点击“保存海报”后，将跑腿服务海报添加到相册，方便在微信内识别。</string>
 </dict>
 </plist>

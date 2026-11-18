@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>我的川农：白底居中的川字绿叶图标预览</title>
+  <rect width="1024" height="1024" fill="#ffffff"/>
+  <g fill="#0a6646">
+    <rect x="295" y="373" width="98" height="354" rx="25"/>
+    <rect x="463" y="296" width="98" height="478" rx="25"/>
+    <rect x="631" y="373" width="98" height="354" rx="25"/>
+  </g>
+  <path d="M 606 345 C 614 286 661 237 744 237 C 731 298 687 345 606 345 Z" fill="#3ea862"/>
+</svg>

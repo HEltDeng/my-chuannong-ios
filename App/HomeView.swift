@@ -144,7 +144,7 @@ private struct FeaturePressStyle:ButtonStyle {
 extension Color { init(hex:UInt32) { self.init(red:Double((hex>>16)&255)/255,green:Double((hex>>8)&255)/255,blue:Double(hex&255)/255) } }
 extension FeatureRoute {
     var color:Color {
-        let colors:[FeatureRoute:UInt32]=[.schedule:0x2878C7,.grade:0x2D8F85,.exam:0xB86669,.document:0x527D62,.cet:0x6574A8,.mandarin:0x8A6680,.ncre:0x6574C8,.comprehensive_score:0x2D8F85,.electric:0xB0792E,.lost_found:0x826F61,.secondhand:0x357F8A,.errand:0x4A70B0,.weekly_attendance:0x5E788A,.holiday_destination:0x6574C8,.logistics_repair:0xB0792E,.academic:0x477DB3,.student_affairs:0x477DB3,.auth:0x6D6DB0,.ywtb:0xAB8145,.payments:0x439D8C,.calendar:0xB86F7A,.campus_map:0x3B8D68]
+        let colors:[FeatureRoute:UInt32]=[.schedule:0x2878C7,.grade:0x2D8F85,.exam:0xB86669,.document:0x527D62,.cet:0x6574A8,.mandarin:0x8A6680,.ncre:0x6574C8,.comprehensive_score:0x2D8F85,.electric:0xB0792E,.lost_found:0x826F61,.secondhand:0x357F8A,.errand:0x4A70B0,.weekly_attendance:0x5E788A,.holiday_destination:0x6574C8,.logistics_repair:0xB0792E,.academic:0x477DB3,.student_affairs:0x477DB3,.auth:0x6D6DB0,.ywtb:0xAB8145,.payments:0x439D8C,.calendar:0xB86F7A]
         return Color(hex:colors[self] ?? 0x237B62)
     }
 }
@@ -172,7 +172,6 @@ struct FeatureDestination: View {
         case .driving_school, .ielts_toefl, .civil_postgrad, .gym: ProvidersView(route: route)
         case .academic:
             ConsentGate { AcademicServiceView().id(school.identity?.studentID) }
-        case .campus_map: CampusMapView()
         case .calendar: SchoolCalendarView()
         case .cet, .mandarin, .ncre:
             ConsentGate { SafariPage(url: URL(string: Self.external[route]!)!) }

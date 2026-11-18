@@ -37,19 +37,17 @@ resource_files=[];resource_builds=[]
 for resource in sorted((root/'Resources').rglob('*')):
     if not resource.is_file() or resource.name.startswith('.'):continue
     if '.xcassets' in str(resource):continue
+    # Keep this source asset local until its provider has confirmed App distribution rights.
+    if resource.name == 'errand_service_poster.jpg':continue
     path=str(resource.relative_to(root));kind={'.xcprivacy':'text.plist.xml','.json':'text.json','.jpg':'image.jpeg','.jpeg':'image.jpeg','.png':'image.png','.webp':'image.webp'}.get(resource.suffix,'file')
     ref=file(path,kind);resource_files.append(ref);resource_builds.append(build(path,ref))
+legal_asset = 'MyChuannongLegal.json'
+legal_reference = add('file:' + legal_asset, 'PBXFileReference', path=legal_asset,
+                      lastKnownFileType='text.json', sourceTree='MYCHUANNONG_LEGAL_DIR')
+resource_files.append(legal_reference)
+resource_builds.append(build(legal_asset, legal_reference))
 for resource in sorted((root/'Resources').glob('*.xcassets')):
     path=str(resource.relative_to(root));ref=file(path,'folder.assetcatalog');resource_files.append(ref);resource_builds.append(build(path,ref))
-# These official SDKs are static frameworks, so link on device and copy their resource bundles.
-# Vendor's distribution has device arm64 + Intel simulator; it has no arm64 simulator slice.
-vendor_files=[]
-for name in ['AMapFoundationKit','AMapSearchKit','MAMapKit']:
-    path='Vendor/AMap/'+name+'.framework';vendor_files.append(file(path,'wrapper.framework'))
-    for resource in sorted((root/path).glob('*.bundle')):
-        relative=str(resource.relative_to(root));ref=file(relative,'wrapper.plug-in');vendor_files.append(ref);resource_builds.append(build(relative,ref))
-for resource in sorted((root/'Vendor/AMap').glob('*Privacy.bundle')):
-    relative=str(resource.relative_to(root));ref=file(relative,'wrapper.plug-in');vendor_files.append(ref);resource_builds.append(build(relative,ref))
 configuration_files=[file('Config/App.xcconfig','text.xcconfig'),file('Config/Release.xcconfig','text.xcconfig'),file('Config/Local.xcconfig.example','text'),file('Config/Release.local.xcconfig.example','text'),file('Configuration/Info.plist','text.plist.xml'),file('Configuration/App.entitlements','text.plist.entitlements'),file('Configuration/Widget.entitlements','text.plist.entitlements'),file('Widget/Info.plist','text.plist.xml')]
 base=configuration_files[0]
 release_base=configuration_files[1]
@@ -57,7 +55,7 @@ app_product=add('app-product','PBXFileReference',fixed='100000000000000000000007
 widget_product=add('widget-product','PBXFileReference',explicitFileType='wrapper.app-extension',includeInIndex=0,path='SchoolWidgets.appex',sourceTree='BUILT_PRODUCTS_DIR')
 products=add('products','PBXGroup',children=[app_product,widget_product],name='Products',sourceTree='<group>')
 groups=[]
-for name,children in [('App',app_files),('ChuannongCore',core_files),('Widget',widget_files),('Resources',resource_files),('Configuration',configuration_files),('Vendor',vendor_files)]:
+for name,children in [('App',app_files),('ChuannongCore',core_files),('Widget',widget_files),('Resources',resource_files),('Configuration',configuration_files)]:
     groups.append(add('group:'+name,'PBXGroup',children=children,name=name,sourceTree='<group>'))
 main=add('main','PBXGroup',children=groups+[products],sourceTree='<group>')
 project_id='100000000000000000000001';app_id='100000000000000000000006';widget_id=ident('widget-target')
@@ -74,12 +72,10 @@ def target_configs(target):
     builds=[]
     for name in ['Debug','Release']:
         bundle='com.mychuannong.app' if name=='Release' else 'com.mychuannong.app.development'
-        values={'CODE_SIGN_STYLE':'Automatic','CURRENT_PROJECT_VERSION':'1','MARKETING_VERSION':'0.1.0','GENERATE_INFOPLIST_FILE':'YES','PRODUCT_NAME':'$(TARGET_NAME)','TARGETED_DEVICE_FAMILY':'1,2','SWIFT_EMIT_LOC_STRINGS':'YES'}
+        values={'CODE_SIGN_STYLE':'Automatic','CURRENT_PROJECT_VERSION':'7','MARKETING_VERSION':'0.1.0','GENERATE_INFOPLIST_FILE':'YES','PRODUCT_NAME':'$(TARGET_NAME)','TARGETED_DEVICE_FAMILY':'1,2','SWIFT_EMIT_LOC_STRINGS':'YES'}
         if target=='app':
             values.update(PRODUCT_BUNDLE_IDENTIFIER=bundle,PRODUCT_NAME='MyChuannong' if name=='Release' else 'MyChuannongDevelopment',INFOPLIST_FILE='Configuration/Info.plist',CODE_SIGN_ENTITLEMENTS='Configuration/App.entitlements',INFOPLIST_KEY_CFBundleDisplayName='我的川农' if name=='Release' else '我的川农开发',INFOPLIST_KEY_UIApplicationSceneManifest_Generation='YES',INFOPLIST_KEY_UILaunchScreen_Generation='YES',INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone='UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight',INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad='UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight')
             values['ASSETCATALOG_COMPILER_APPICON_NAME']='AppIcon'
-            values['FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]']='$(inherited) $(PROJECT_DIR)/Vendor/AMap'
-            values['OTHER_LDFLAGS[sdk=iphoneos*]']='$(inherited) -ObjC -lz -lc++ -lsqlite3 -framework AMapFoundationKit -framework AMapSearchKit -framework MAMapKit -framework CoreLocation -framework CoreTelephony -framework SystemConfiguration -framework Security -framework Metal -framework OpenGLES -framework GLKit -framework Accelerate -framework CFNetwork'
         else:
             values.update(PRODUCT_BUNDLE_IDENTIFIER=bundle+'.widgets',INFOPLIST_FILE='Widget/Info.plist',CODE_SIGN_ENTITLEMENTS='Configuration/Widget.entitlements',INFOPLIST_KEY_CFBundleDisplayName='我的川农课表',SKIP_INSTALL='YES',APPLICATION_EXTENSION_API_ONLY='YES')
         builds.append(add(target+'-config:'+name,'XCBuildConfiguration',name=name,buildSettings=values))

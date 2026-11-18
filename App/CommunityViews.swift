@@ -26,11 +26,13 @@ struct CommunityView: View {
     @State private var compose = false
     @State private var active = false
     @State private var revision = 0
+    @AppStorage(CommunityBlocks.storageKey) private var blockedUsers = "{}"
     private var items: [CampusRecord] {
         store.records.filter { item in
             if mine {
                 return status == "全部" || (status == "进行中" && !item.value["done"].boolean) || (status == "已完成" && item.value["done"].boolean) || ["PENDING":"待审核", "PUBLISHED":"已发布", "VIOLATION":"违规"][item["status"]] == status
             }
+            if CommunityBlocks(json: blockedUsers).contains(item["ownerId"], account: platform.user?.id) { return false }
             let text = [item.title, item["location"], item["campus"], item["description"]].joined(separator: " ")
             return !item.value["done"].boolean && item["status"] == "PUBLISHED" && item["kind"] == type && (campus == "全部校区" || item["campus"] == campus) && query.split(whereSeparator: \.isWhitespace).allSatisfy { text.localizedCaseInsensitiveContains(String($0)) }
         }
@@ -134,14 +136,20 @@ struct CommunityDetail: View {
     @State private var busy = false
     @State private var revision = 0
     @State private var copied: String?
+    @State private var reporting = false
+    @State private var confirmingBlock = false
+    @AppStorage(CommunityBlocks.storageKey) private var blockedUsers = "{}"
     private var item: CampusRecord { CampusRecord(store.value) }
     private var market: Bool { kind == .secondhand }
+    private var isBlocked: Bool { CommunityBlocks(json: blockedUsers).contains(item["ownerId"], account: platform.user?.id) }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 if store.loading { ProgressView() }
                 if let error = store.error { StatusMessage(text: error) }
-                if store.loaded {
+                if store.loaded && isBlocked {
+                    ContentUnavailableView("已屏蔽该用户", systemImage: "person.crop.circle.badge.xmark")
+                } else if store.loaded {
                     if item.value["mine"].boolean { review }
                     RecordImages(paths: item.imagePaths)
                     VStack(alignment: .leading, spacing: 13) {
@@ -160,11 +168,33 @@ struct CommunityDetail: View {
             }.padding(20)
         }.background(LostFoundTheme.paper)
         .navigationTitle(market ? "好物详情" : item["kind"] == "found" ? "招领详情" : "寻物详情").navigationBarTitleDisplayMode(.inline)
-        .safeAreaInset(edge: .bottom) { if store.loaded { management } }
+        .toolbar {
+            if store.loaded && !item.value["mine"].boolean && !isBlocked {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button("举报内容", systemImage: "flag") { reporting = true }
+                        if !item["ownerId"].isEmpty {
+                            Button("屏蔽发布者", systemImage: "person.crop.circle.badge.xmark", role: .destructive) { confirmingBlock = true }
+                        }
+                    } label: { Image(systemName: "ellipsis.circle").accessibilityLabel("更多操作") }
+                }
+            }
+        }
+        .safeAreaInset(edge: .bottom) { if store.loaded && !isBlocked { management } }
         .task(id: "\(revision)-\(platform.user?.id ?? "")") { await store.load(kind.communityPath + "/" + id, session: platform) }
         .sheet(isPresented: $editing) { NavigationStack { CommunityEditor(kind: kind, existing: item, onSuccess: { revision += 1; changed() }) }.environment(platform) }
+        .sheet(isPresented: $reporting) { NavigationStack { CommunityReportView(kind: kind, postID: id) }.environment(platform) }
         .sheet(isPresented: $contact) { NavigationStack { VStack(alignment: .leading, spacing: 22) { Text("联系方式").font(.title2.bold()); Text(item["contact"]).textSelection(.enabled); Button(copied ?? "复制联系方式") { UIPasteboard.general.string = item["contact"]; copied = "已复制" }.buttonStyle(.borderedProminent).frame(maxWidth:.infinity); Text("仅用于本次物品联系，请勿用于其他用途。").font(.footnote).foregroundStyle(.secondary) }.frame(maxWidth: .infinity, alignment: .leading).padding(24).toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { contact = false } } } }.presentationDetents([.medium]) }
         .confirmationDialog("永久删除这条发布？", isPresented: $deleting, titleVisibility: .visible) { Button("删除", role: .destructive) { perform { _ = try await platform.perform(kind.communityPath + "/" + id, method: "DELETE"); changed(); dismiss() } } } message: { Text("删除后无法恢复。") }
+        .confirmationDialog("屏蔽发布者？", isPresented: $confirmingBlock, titleVisibility: .visible) {
+            Button("屏蔽", role: .destructive) {
+                var blocks = CommunityBlocks(json: blockedUsers)
+                blocks.block(item["ownerId"], name: item["ownerName"], account: platform.user?.id)
+                blockedUsers = blocks.json()
+                changed()
+                dismiss()
+            }
+        } message: { Text("将在这台设备隐藏该用户在二手好物和失物招领中的发布，可在隐私与合规中解除。") }
     }
     private var review: some View {
         VStack(alignment: .leading, spacing: 9) {
@@ -188,6 +218,56 @@ struct CommunityDetail: View {
         } else if !market { Button("联系发布人") { contact = true }.buttonStyle(.borderedProminent).frame(maxWidth: .infinity).padding(16).background(LostFoundTheme.paper) }
     }
     private func perform(_ operation: @escaping @MainActor () async throws -> Void) { busy = true; Task { defer { busy = false }; do { try await operation() } catch { store.error = error.localizedDescription } } }
+}
+
+struct CommunityReportView: View {
+    let kind: FeatureRoute
+    let postID: String
+    @Environment(PlatformSession.self) private var platform
+    @Environment(\.dismiss) private var dismiss
+    @State private var reason = ""
+    @State private var busy = false
+    @State private var submitted = false
+    @State private var error: String?
+
+    var body: some View {
+        Form {
+            Section("举报原因") {
+                TextField("请说明需要处理的内容", text: $reason, axis: .vertical)
+                    .lineLimit(4...8)
+                    .onChange(of: reason) { _, value in reason = String(value.prefix(300)) }
+            }
+            if let error { Text(error).foregroundStyle(.red) }
+            Section {
+                Button(busy ? "提交中…" : "提交举报") { submit() }
+                    .frame(maxWidth: .infinity)
+                    .disabled(busy || reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .navigationTitle("举报内容").navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() }.disabled(busy) } }
+        .interactiveDismissDisabled(busy)
+        .alert("举报已提交", isPresented: $submitted) { Button("完成") { dismiss() } } message: {
+            Text("可在“我的反馈”查看处理进度。")
+        }
+    }
+
+    private func submit() {
+        let content = "板块：\(kind.title)\n发布编号：\(postID)\n举报原因：\(reason.trimmingCharacters(in: .whitespacesAndNewlines))"
+        busy = true
+        error = nil
+        Task {
+            defer { busy = false }
+            do {
+                _ = try await platform.perform("feedback", method: "POST", body: [
+                    "category": .string("CONTENT_REPORT"), "title": .string("举报\(kind.title)内容"),
+                    "content": .string(content),
+                    "appVersion": .string(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0")
+                ])
+                submitted = true
+            } catch { self.error = error.localizedDescription }
+        }
+    }
 }
 func communityDate(_ milliseconds: Double) -> String { guard milliseconds > 0 else { return "" }; return Date(timeIntervalSince1970: milliseconds / 1000).formatted(.dateTime.year().month().day().hour().minute()) }
 
@@ -213,6 +293,7 @@ struct CommunityEditor: View {
     @State private var images: [String] = []
     @State private var selection: [PhotosPickerItem] = []
     @State private var populated=false
+    @State private var confirmingPublicContact = false
     @State private var originalDraft:[String]=[]
     @State private var discard=false
     private var draft:[String] { [title,description,campus,type,category,location,CampusContract.day(date),time,contact,wechat,phone]+images }
@@ -256,6 +337,12 @@ struct CommunityEditor: View {
         }.background(LostFoundTheme.paper).navigationTitle(existing == nil ? "发布信息" : "编辑信息").navigationBarTitleDisplayMode(.inline).interactiveDismissDisabled(busy || dirty)
         .onAppear { populate() }.task(id: selection) { await prepareImages() }
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消") { if dirty { discard=true } else { dismiss() } }.disabled(busy) } }
+        .alert("公开本条信息的联系方式？", isPresented: $confirmingPublicContact) {
+            Button("同意公开并提交") { publish() }
+            Button("取消", role: .cancel) { }
+        } message: {
+            Text("本条信息审核发布后，浏览者可以查看并复制您填写的联系方式，用于联系本次物品交易或失物招领。")
+        }
         .confirmationDialog("放弃这次编辑？",isPresented:$discard,titleVisibility:.visible){Button("放弃编辑",role:.destructive){dismiss()};Button("继续编辑",role:.cancel){}}message:{Text("尚未保存的内容将不会保留。 ")}
     }
     private func editorField<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -302,6 +389,12 @@ struct CommunityEditor: View {
         title=title.trimmingCharacters(in:.whitespacesAndNewlines);description=description.trimmingCharacters(in:.whitespacesAndNewlines);location=location.trimmingCharacters(in:.whitespacesAndNewlines);contact=contact.trimmingCharacters(in:.whitespacesAndNewlines);wechat=wechat.trimmingCharacters(in:.whitespacesAndNewlines);phone=phone.trimmingCharacters(in:.whitespacesAndNewlines)
         guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, title.count <= (isMarket ? 50 : 30), description.count <= (isMarket ? 1000 : 300), !isMarket || !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { error = "请核对标题与描述：标题最多 \(isMarket ? 50 : 30) 字，描述最多 \(isMarket ? 1000 : 300) 字"; return }
         guard isMarket ? ((!wechat.isEmpty || !phone.isEmpty) && wechat.count <= 64 && phone.count <= 32) : (!location.isEmpty && location.count <= 40 && !contact.isEmpty && contact.count <= 60 && time.count <= 30) else { error = "请完整填写地点和联系方式，并核对长度"; return }
+        error = nil
+        confirmingPublicContact = true
+    }
+    private func publish() {
+        guard !busy else { return }
+        let isMarket = kind == .secondhand
         var body: [String: JSONValue] = ["clientId": .string(clientID), "title": .string(title), "description": .string(description), "campus": .string(campus)]
         if isMarket { body.merge(["type": .string(type), "category": .string(category), "wechat": .string(wechat), "phone": .string(phone), "images": .array(images.map(JSONValue.string))]) { _, new in new } }
         else { body.merge(["kind": .string(type), "location": .string(location), "date": .string(CampusContract.day(date)), "time": .string(time), "contact": .string(contact), "image": .string(images.first ?? "")]) { _, new in new } }

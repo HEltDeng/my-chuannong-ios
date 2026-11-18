@@ -1,16 +1,21 @@
-// Package the approved original brand artwork at Apple's required icon dimensions.
-// Run from the iOS directory: swift Scripts/generate-assets.swift
-import AppKit
+// Package the approved, opaque 1024 × 1024 icon for Apple's asset catalog.
+// Run from the iOS project directory after generate-original-brand-icon.swift.
+import Foundation
 import ImageIO
-let root=URL(fileURLWithPath:FileManager.default.currentDirectoryPath)
-let original=root.appending(path:"Resources/my_chuannong_brand_logo.png")
-guard let source=CGImageSourceCreateWithURL(original as CFURL,nil),let image=CGImageSourceCreateImageAtIndex(source,0,nil) else{fatalError("Own product logo missing")}
-let folder=root.appending(path:"Resources/Assets.xcassets/AppIcon.appiconset",directoryHint:.isDirectory)
-try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
-guard let context=CGContext(data:nil,width:1024,height:1024,bitsPerComponent:8,bytesPerRow:0,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.noneSkipLast.rawValue) else{fatalError("Icon context unavailable")}
-context.setFillColor(CGColor(gray:1,alpha:1));context.fill(CGRect(x:0,y:0,width:1024,height:1024));context.interpolationQuality = .high;context.draw(image,in:CGRect(x:0,y:0,width:1024,height:1024))
-guard let icon=context.makeImage(),let output=CGImageDestinationCreateWithURL(folder.appending(path:"AppIcon.png") as CFURL,"public.png" as CFString,1,nil) else{fatalError("Icon output unavailable")}
-CGImageDestinationAddImage(output,icon,nil);guard CGImageDestinationFinalize(output) else{fatalError("Icon write failed")}
-try Data(#"{"images":[{"filename":"AppIcon.png","idiom":"universal","platform":"ios","size":"1024x1024"}],"info":{"author":"xcode","version":1}}"#.utf8).write(to:folder.appending(path:"Contents.json"))
-try Data(#"{"info":{"author":"xcode","version":1}}"#.utf8).write(to:folder.deletingLastPathComponent().appending(path:"Contents.json"))
-print("Packaged the own product icon; original artwork preserved.")
+let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+let original = root.appending(path: "Resources/my_chuannong_brand_logo.png")
+let data = try Data(contentsOf: original)
+guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+      let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
+      image.width == 1024, image.height == 1024,
+      image.alphaInfo == .none || image.alphaInfo == .noneSkipFirst || image.alphaInfo == .noneSkipLast else {
+    fatalError("The approved iOS app icon must be an opaque 1024 × 1024 PNG")
+}
+let folder = root.appending(path: "Resources/Assets.xcassets/AppIcon.appiconset", directoryHint: .isDirectory)
+try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+try data.write(to: folder.appending(path: "AppIcon.png"), options: .atomic)
+try Data(#"{"images":[{"filename":"AppIcon.png","idiom":"universal","platform":"ios","size":"1024x1024"}],"info":{"author":"xcode","version":1}}"#.utf8)
+    .write(to: folder.appending(path: "Contents.json"), options: .atomic)
+try Data(#"{"info":{"author":"xcode","version":1}}"#.utf8)
+    .write(to: folder.deletingLastPathComponent().appending(path: "Contents.json"), options: .atomic)
+print("Packaged the approved iOS app icon.")
